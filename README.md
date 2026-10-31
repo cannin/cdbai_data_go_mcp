@@ -2,7 +2,7 @@
 
 Read-only MCP server for retrieving CellMinerCDB rows from BigQuery without LLM calls or generated code.
 
-Version: `0.1.0`
+Version: `0.1.1`
 
 ## Quick Start
 
