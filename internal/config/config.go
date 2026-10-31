@@ -40,7 +40,7 @@ type Config struct {
 //   - Config: Validated server configuration.
 //   - error: Missing or invalid configuration.
 func Load(envFile string) (Config, error) {
-	if err := loadDotEnv(envFile); err != nil {
+	if err := LoadEnvFile(envFile); err != nil {
 		return Config{}, err
 	}
 
@@ -90,8 +90,14 @@ func Load(envFile string) (Config, error) {
 	}, nil
 }
 
-// loadDotEnv loads local configuration without replacing exported variables.
-func loadDotEnv(path string) error {
+// LoadEnvFile loads local configuration without replacing exported variables.
+//
+// Args:
+//   - path: Dotenv path. A missing default .env file is allowed.
+//
+// Returns:
+//   - error: Missing explicit file or malformed dotenv data.
+func LoadEnvFile(path string) error {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return fmt.Errorf("environment file path cannot be empty")

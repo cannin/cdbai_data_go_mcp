@@ -91,7 +91,7 @@ func (s *Service) Retrieve(ctx context.Context, input RetrieveInput) (RetrieveOu
 		return RetrieveOutput{}, err
 	}
 
-	spec := buildQuery(s.tableFQN, input, limit+1)
+	spec := BuildQuery(s.tableFQN, input, limit+1)
 	rows, err := s.executor.Execute(ctx, spec)
 	if err != nil {
 		return RetrieveOutput{}, fmt.Errorf("retrieve BigQuery rows: %w", err)
@@ -142,7 +142,16 @@ func validateFilterSizes(input RetrieveInput) error {
 	return nil
 }
 
-func buildQuery(tableFQN string, input RetrieveInput, scanLimit int) QuerySpec {
+// BuildQuery creates a parameterized BigQuery retrieval query.
+//
+// Args:
+//   - tableFQN: Validated project.dataset.table identifier.
+//   - input: Exact-match filters.
+//   - scanLimit: Maximum rows requested from BigQuery.
+//
+// Returns:
+//   - QuerySpec: SQL and named parameters.
+func BuildQuery(tableFQN string, input RetrieveInput, scanLimit int) QuerySpec {
 	clauses := []string{"value IS NOT NULL"}
 	parameters := make([]bigquery.QueryParameter, 0, 6)
 
