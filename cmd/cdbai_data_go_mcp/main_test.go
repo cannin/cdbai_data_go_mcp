@@ -19,14 +19,24 @@ import (
 
 type protocolTestExecutor struct{}
 
-func (protocolTestExecutor) Execute(_ context.Context, _ data.QuerySpec) ([]data.Row, error) {
-	return []data.Row{{
-		DataType: "exp",
-		Dataset:  "ccle",
-		ObsName:  "CVCL_0002",
-		VarName:  "TP53",
-		Value:    1.5,
-	}}, nil
+func (protocolTestExecutor) Execute(_ context.Context, _ data.QuerySpec) (data.ExecutionResult, error) {
+	return data.ExecutionResult{
+		Rows: []data.Row{{
+			DataType: "exp",
+			Dataset:  "ccle",
+			ObsName:  "CVCL_0002",
+			VarName:  "TP53",
+			Value:    1.5,
+		}},
+		Metrics: data.QueryMetrics{
+			JobID:                    "job-123",
+			TotalBytesProcessed:      100,
+			TotalBytesBilled:         200,
+			TotalSlotMilliseconds:    300,
+			EstimatedOnDemandCostUSD: 0.001,
+			OnDemandPricePerTiBUSD:   6.25,
+		},
+	}, nil
 }
 
 func TestParseArgs(t *testing.T) {
@@ -118,6 +128,8 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 	for _, expected := range []string{
 		"case-sensitive exact matches",
 		"does not apply LOWER()",
+		"query_metrics",
+		"actual bytes processed and billed",
 		"MCF7 or MCF-7 -> CVCL_0031",
 		"p53 -> TP53",
 		"Zero rows do not prove biological absence",
@@ -162,6 +174,16 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 	}
 	if structured["count"] != float64(1) {
 		t.Fatalf("structured count = %#v", structured["count"])
+	}
+	metrics, ok := structured["query_metrics"].(map[string]any)
+	if !ok {
+		t.Fatalf("query_metrics type = %T", structured["query_metrics"])
+	}
+	if metrics["job_id"] != "job-123" {
+		t.Fatalf("query_metrics job_id = %#v", metrics["job_id"])
+	}
+	if metrics["total_bytes_billed"] != float64(200) {
+		t.Fatalf("query_metrics total_bytes_billed = %#v", metrics["total_bytes_billed"])
 	}
 }
 
@@ -292,5 +314,28 @@ func TestLiveMCP(t *testing.T) {
 	}
 	if structured["count"] != float64(1) {
 		t.Fatalf("live result count = %#v, want 1", structured["count"])
+	}
+	metrics, ok := structured["query_metrics"].(map[string]any)
+	if !ok {
+		t.Fatalf("live query_metrics type = %T", structured["query_metrics"])
+	}
+	jobID, ok := metrics["job_id"].(string)
+	if !ok || jobID == "" {
+		t.Fatalf("live query_metrics job_id = %#v", metrics["job_id"])
+	}
+	if bytesBilled, ok := metrics["total_bytes_billed"].(float64); !ok || bytesBilled < 0 {
+		t.Fatalf("live query_metrics total_bytes_billed = %#v", metrics["total_bytes_billed"])
+	}
+	if estimatedCost, ok := metrics["estimated_on_demand_cost_usd"].(float64); !ok || estimatedCost < 0 {
+		t.Fatalf(
+			"live query_metrics estimated_on_demand_cost_usd = %#v",
+			metrics["estimated_on_demand_cost_usd"],
+		)
+	}
+	if price, ok := metrics["on_demand_price_per_tib_usd"].(float64); !ok || price != 6.25 {
+		t.Fatalf(
+			"live query_metrics on_demand_price_per_tib_usd = %#v",
+			metrics["on_demand_price_per_tib_usd"],
+		)
 	}
 }

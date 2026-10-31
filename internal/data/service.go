@@ -36,10 +36,28 @@ type Row struct {
 
 // RetrieveOutput is the structured MCP response.
 type RetrieveOutput struct {
-	Rows      []Row `json:"rows"`
-	Count     int   `json:"count"`
-	Limit     int   `json:"limit"`
-	Truncated bool  `json:"truncated"`
+	Rows         []Row        `json:"rows"`
+	Count        int          `json:"count"`
+	Limit        int          `json:"limit"`
+	Truncated    bool         `json:"truncated"`
+	QueryMetrics QueryMetrics `json:"query_metrics"`
+}
+
+// QueryMetrics reports actual BigQuery job statistics after execution.
+type QueryMetrics struct {
+	JobID                    string  `json:"job_id"`
+	CacheHit                 bool    `json:"cache_hit"`
+	TotalBytesProcessed      int64   `json:"total_bytes_processed"`
+	TotalBytesBilled         int64   `json:"total_bytes_billed"`
+	TotalSlotMilliseconds    int64   `json:"total_slot_ms"`
+	EstimatedOnDemandCostUSD float64 `json:"estimated_on_demand_cost_usd"`
+	OnDemandPricePerTiBUSD   float64 `json:"on_demand_price_per_tib_usd"`
+}
+
+// ExecutionResult contains retrieved rows and their BigQuery job metrics.
+type ExecutionResult struct {
+	Rows    []Row
+	Metrics QueryMetrics
 }
 
 // QuerySpec is a complete parameterized query request.
@@ -50,7 +68,7 @@ type QuerySpec struct {
 
 // Executor executes a parameterized retrieval query.
 type Executor interface {
-	Execute(context.Context, QuerySpec) ([]Row, error)
+	Execute(context.Context, QuerySpec) (ExecutionResult, error)
 }
 
 // Service validates retrieval input and coordinates query execution.
@@ -92,10 +110,11 @@ func (s *Service) Retrieve(ctx context.Context, input RetrieveInput) (RetrieveOu
 	}
 
 	spec := BuildQuery(s.tableFQN, input, limit+1)
-	rows, err := s.executor.Execute(ctx, spec)
+	execution, err := s.executor.Execute(ctx, spec)
 	if err != nil {
 		return RetrieveOutput{}, fmt.Errorf("retrieve BigQuery rows: %w", err)
 	}
+	rows := execution.Rows
 
 	truncated := len(rows) > limit
 	if truncated {
@@ -106,10 +125,11 @@ func (s *Service) Retrieve(ctx context.Context, input RetrieveInput) (RetrieveOu
 	}
 
 	return RetrieveOutput{
-		Rows:      rows,
-		Count:     len(rows),
-		Limit:     limit,
-		Truncated: truncated,
+		Rows:         rows,
+		Count:        len(rows),
+		Limit:        limit,
+		Truncated:    truncated,
+		QueryMetrics: execution.Metrics,
 	}, nil
 }
 

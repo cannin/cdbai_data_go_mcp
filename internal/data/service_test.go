@@ -7,17 +7,28 @@ import (
 )
 
 type fakeExecutor struct {
-	rows []Row
-	spec QuerySpec
+	rows    []Row
+	metrics QueryMetrics
+	spec    QuerySpec
 }
 
-func (f *fakeExecutor) Execute(_ context.Context, spec QuerySpec) ([]Row, error) {
+func (f *fakeExecutor) Execute(_ context.Context, spec QuerySpec) (ExecutionResult, error) {
 	f.spec = spec
-	return f.rows, nil
+	return ExecutionResult{Rows: f.rows, Metrics: f.metrics}, nil
 }
 
 func TestRetrieveBuildsParameterizedQuery(t *testing.T) {
-	executor := &fakeExecutor{rows: []Row{{DataType: "exp"}}}
+	executor := &fakeExecutor{
+		rows: []Row{{DataType: "exp"}},
+		metrics: QueryMetrics{
+			JobID:                    "job-123",
+			TotalBytesProcessed:      100,
+			TotalBytesBilled:         200,
+			TotalSlotMilliseconds:    300,
+			EstimatedOnDemandCostUSD: 0.001,
+			OnDemandPricePerTiBUSD:   6.25,
+		},
+	}
 	service := NewService(executor, "project.dataset.table", 1_000)
 
 	output, err := service.Retrieve(context.Background(), RetrieveInput{
@@ -30,6 +41,9 @@ func TestRetrieveBuildsParameterizedQuery(t *testing.T) {
 	}
 	if output.Count != 1 || output.Limit != 10 {
 		t.Fatalf("Retrieve() output = %+v", output)
+	}
+	if output.QueryMetrics != executor.metrics {
+		t.Fatalf("Retrieve() metrics = %+v, want %+v", output.QueryMetrics, executor.metrics)
 	}
 	if strings.Contains(executor.spec.SQL, "ccle") || strings.Contains(executor.spec.SQL, "exp") {
 		t.Fatalf("query contains unparameterized values: %s", executor.spec.SQL)

@@ -8,6 +8,11 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const (
+	bytesPerTiB            = 1 << 40
+	onDemandPricePerTiBUSD = 6.25
+)
+
 // BigQueryExecutor runs QuerySpec values with a billed-byte ceiling.
 type BigQueryExecutor struct {
 	client         *bigquery.Client
@@ -42,17 +47,21 @@ func NewBigQueryExecutor(client *bigquery.Client, maxBytesBilled int64) *BigQuer
 //   - spec: SQL and named parameters.
 //
 // Returns:
-//   - []Row: Retrieved data records.
+//   - ExecutionResult: Retrieved data records and actual job metrics.
 //   - error: BigQuery submission or iteration error.
-func (e *BigQueryExecutor) Execute(ctx context.Context, spec QuerySpec) ([]Row, error) {
+func (e *BigQueryExecutor) Execute(ctx context.Context, spec QuerySpec) (ExecutionResult, error) {
 	query := e.client.Query(spec.SQL)
 	query.UseLegacySQL = false
 	query.MaxBytesBilled = e.maxBytesBilled
 	query.Parameters = spec.Parameters
 
-	iteratorRows, err := query.Read(ctx)
+	job, err := query.Run(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("start query: %w", err)
+		return ExecutionResult{}, fmt.Errorf("start query: %w", err)
+	}
+	iteratorRows, err := job.Read(ctx)
+	if err != nil {
+		return ExecutionResult{}, fmt.Errorf("read query results: %w", err)
 	}
 
 	rows := make([]Row, 0)
@@ -63,11 +72,40 @@ func (e *BigQueryExecutor) Execute(ctx context.Context, spec QuerySpec) ([]Row, 
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("read query row: %w", err)
+			return ExecutionResult{}, fmt.Errorf("read query row: %w", err)
 		}
 		rows = append(rows, convertRow(raw))
 	}
-	return rows, nil
+
+	status, err := job.Status(ctx)
+	if err != nil {
+		return ExecutionResult{}, fmt.Errorf("read query statistics: %w", err)
+	}
+	metrics, err := buildQueryMetrics(job.ID(), status)
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+	return ExecutionResult{Rows: rows, Metrics: metrics}, nil
+}
+
+func buildQueryMetrics(jobID string, status *bigquery.JobStatus) (QueryMetrics, error) {
+	if status == nil || status.Statistics == nil {
+		return QueryMetrics{}, fmt.Errorf("query statistics are unavailable")
+	}
+	queryStatistics, ok := status.Statistics.Details.(*bigquery.QueryStatistics)
+	if !ok || queryStatistics == nil {
+		return QueryMetrics{}, fmt.Errorf("query-specific statistics are unavailable")
+	}
+	bytesBilled := queryStatistics.TotalBytesBilled
+	return QueryMetrics{
+		JobID:                    jobID,
+		CacheHit:                 queryStatistics.CacheHit,
+		TotalBytesProcessed:      status.Statistics.TotalBytesProcessed,
+		TotalBytesBilled:         bytesBilled,
+		TotalSlotMilliseconds:    queryStatistics.SlotMillis,
+		EstimatedOnDemandCostUSD: float64(bytesBilled) / float64(bytesPerTiB) * onDemandPricePerTiBUSD,
+		OnDemandPricePerTiBUSD:   onDemandPricePerTiBUSD,
+	}, nil
 }
 
 func convertRow(raw bigQueryRow) Row {

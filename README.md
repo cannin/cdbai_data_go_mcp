@@ -2,7 +2,7 @@
 
 Read-only MCP server for retrieving CellMinerCDB rows from BigQuery without LLM calls or generated code.
 
-Version: `0.2.0`
+Version: `0.2.1`
 
 ## Quick Start
 
@@ -99,6 +99,8 @@ The server exposes one tool:
 Filters are case-sensitive exact matches. The server trims surrounding whitespace but does not apply `LOWER()` or change identifier case. Use canonical values exactly as described by MCP discovery metadata. Different filter fields are combined with `AND`; values within one field are combined with `OR` semantics.
 
 The MCP discovery metadata tells clients that `retrieve_data` is not synonym-aware and that aliases must be converted before the call. Cell lines require canonical Cellosaurus accessions, human genes require approved HGNC symbols, and compounds require numeric PubChem CIDs where applicable. For example, `MCF7` or `MCF-7` becomes `CVCL_0031`, `p53` becomes `TP53`, and `HER2` becomes `ERBB2`. Ambiguous identifiers must not be guessed. A zero-row response is inconclusive because it can mean either an invalid identifier or no matching observations.
+
+Successful responses include `query_metrics` with the opaque BigQuery job ID, cache status, actual bytes processed and billed, total slot milliseconds, and an estimated on-demand query cost. The estimate uses the included public USD-per-TiB rate and does not apply free-tier credits, capacity commitments, negotiated pricing, or other billing adjustments. It does not expose SQL text, table identifiers, project identifiers, credentials, or billing-account details.
 
 ### Command-line options
 
