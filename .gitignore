@@ -1,0 +1,64 @@
+# Build output.
+/dist/
+
+# Go defaults from https://github.com/github/gitignore/blob/main/Go.gitignore.
+# Binaries for programs and plugins.
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries, coverage profiles, and profiling artifacts.
+*.test
+*.out
+coverage.*
+!coverage.go
+*.coverprofile
+profile.cov
+
+# Dependency directories (uncomment to exclude vendored dependencies).
+# vendor/
+
+# Go workspace files.
+go.work
+go.work.sum
+
+# Dotenv files may contain credentials. Keep only the sanitized template.
+.env
+.env.*
+.envrc
+!.env.example
+
+# Google Cloud and other credential files.
+credentials.json
+application_default_credentials.json
+adc.json
+gcloud-adc-key.json
+client_secret*.json
+*service-account*.json
+*service_account*.json
+*.credentials.json
+
+# Private keys, certificates, and token material.
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.token
+*.secret
+.netrc
+
+# Secret directories and infrastructure state commonly containing secrets.
+secrets/
+.secrets/
+*.tfstate
+*.tfstate.*
+
+# Local editor, operating-system, and diagnostic files.
+/.idea/
+/.vscode/
+.DS_Store
+*.log
