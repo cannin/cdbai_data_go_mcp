@@ -1,0 +1,97 @@
+{
+  "generated_at": "2026-10-31T15:41:01.466033486Z",
+  "backend": "postgres",
+  "data_type": "cop",
+  "dataset": "ctrp",
+  "results": [
+    {
+      "backend": "postgres",
+      "run": 1,
+      "requested_rows": 1,
+      "returned_rows": 1,
+      "duration_ms": 37.057,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 2,
+      "requested_rows": 2,
+      "returned_rows": 2,
+      "duration_ms": 0.854,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 3,
+      "requested_rows": 5,
+      "returned_rows": 5,
+      "duration_ms": 0.679,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 4,
+      "requested_rows": 10,
+      "returned_rows": 10,
+      "duration_ms": 0.664,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 5,
+      "requested_rows": 20,
+      "returned_rows": 20,
+      "duration_ms": 1.183,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 6,
+      "requested_rows": 50,
+      "returned_rows": 50,
+      "duration_ms": 1.269,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 7,
+      "requested_rows": 100,
+      "returned_rows": 100,
+      "duration_ms": 2.267,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 8,
+      "requested_rows": 200,
+      "returned_rows": 200,
+      "duration_ms": 1.402,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 9,
+      "requested_rows": 500,
+      "returned_rows": 500,
+      "duration_ms": 3.695,
+      "cache_hit": false
+    },
+    {
+      "backend": "postgres",
+      "run": 10,
+      "requested_rows": 1000,
+      "returned_rows": 1000,
+      "duration_ms": 4.346,
+      "cache_hit": false
+    }
+  ],
+  "summary": {
+    "runs": 10,
+    "min_duration_ms": 0.664,
+    "mean_duration_ms": 5.3416000000000015,
+    "median_duration_ms": 1.3355,
+    "p95_duration_ms": 37.057,
+    "total_bytes_processed": 0,
+    "total_bytes_billed": 0
+  }
+}
