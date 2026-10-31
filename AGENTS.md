@@ -11,7 +11,7 @@
 
 ## Architecture
 
-- `cmd/cdbai_data_go_mcp/main.go` wires configuration, BigQuery, and the stdio MCP server.
+- `cmd/cdbai_data_go_mcp/main.go` wires configuration, BigQuery, and the MCP transports.
 - `internal/config` owns environment parsing and identifier validation.
 - `internal/data` owns typed inputs, parameterized SQL construction, query execution, and result shaping.
 - The server exposes typed retrieval only. Do not add arbitrary SQL or model-generated code execution.
@@ -32,6 +32,7 @@
 
 ## Repository Pitfalls
 
+- Streamable HTTP is the default transport at `127.0.0.1:8080/mcp`; stdio remains available with `--transport stdio`.
 - MCP stdio breaks if application logs are written to stdout.
 - A SQL `LIMIT` does not replace `MaxBytesBilled`; preserve both.
 - Table identifiers cannot be query parameters, so they must remain environment-owned and strictly validated.

@@ -3,12 +3,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,7 +22,19 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const version = "0.0.1"
+const (
+	version                 = "0.0.2"
+	defaultListenAddress    = "127.0.0.1:8080"
+	defaultMCPPath          = "/mcp"
+	gracefulShutdownTimeout = 5 * time.Second
+)
+
+type commandOptions struct {
+	envFile       string
+	transport     string
+	listenAddress string
+	mcpPath       string
+}
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
@@ -26,7 +42,7 @@ func main() {
 	}
 }
 
-// run configures the BigQuery client and serves the MCP protocol over stdio.
+// run configures the BigQuery client and serves the MCP protocol.
 //
 // Args:
 //   - parent: Parent context used to stop the server.
@@ -38,11 +54,11 @@ func run(parent context.Context, args []string) error {
 	ctx, stop := signal.NotifyContext(parent, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	envFile, err := parseArgs(args)
+	options, err := parseArgs(args)
 	if err != nil {
 		return err
 	}
-	cfg, err := config.Load(envFile)
+	cfg, err := config.Load(options.envFile)
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
@@ -57,26 +73,135 @@ func run(parent context.Context, args []string) error {
 	service := data.NewService(executor, cfg.TableFQN(), cfg.MaxRows)
 	server := newServer(service, cfg.QueryTimeout)
 
-	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
-		return fmt.Errorf("run MCP server: %w", err)
+	if options.transport == "stdio" {
+		if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
+			return fmt.Errorf("run MCP server over stdio: %w", err)
+		}
+		return nil
 	}
-	return nil
+
+	return serveHTTP(ctx, server, options.listenAddress, options.mcpPath)
 }
 
-// parseArgs returns the dotenv path selected on the command line.
-func parseArgs(args []string) (string, error) {
+// parseArgs returns the server options selected on the command line.
+func parseArgs(args []string) (commandOptions, error) {
 	flags := flag.NewFlagSet("cdbai_data_go_mcp", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	envFile := ".env"
-	flags.StringVar(&envFile, "env", envFile, "dotenv configuration file")
-	flags.StringVar(&envFile, "e", envFile, "dotenv configuration file")
+	options := commandOptions{
+		envFile:       ".env",
+		transport:     "http",
+		listenAddress: defaultListenAddress,
+		mcpPath:       defaultMCPPath,
+	}
+	flags.StringVar(&options.envFile, "env", options.envFile, "dotenv configuration file")
+	flags.StringVar(&options.envFile, "e", options.envFile, "dotenv configuration file")
+	flags.StringVar(&options.transport, "transport", options.transport, "MCP transport: http or stdio")
+	flags.StringVar(&options.transport, "t", options.transport, "MCP transport: http or stdio")
+	flags.StringVar(&options.listenAddress, "listen", options.listenAddress, "HTTP listen address")
+	flags.StringVar(&options.listenAddress, "l", options.listenAddress, "HTTP listen address")
+	flags.StringVar(&options.mcpPath, "http-path", options.mcpPath, "Streamable HTTP endpoint path")
 	if err := flags.Parse(args); err != nil {
-		return "", fmt.Errorf("parse arguments: %w", err)
+		return commandOptions{}, fmt.Errorf("parse arguments: %w", err)
 	}
 	if flags.NArg() != 0 {
-		return "", fmt.Errorf("unexpected positional arguments: %v", flags.Args())
+		return commandOptions{}, fmt.Errorf("unexpected positional arguments: %v", flags.Args())
 	}
-	return envFile, nil
+
+	options.transport = strings.ToLower(strings.TrimSpace(options.transport))
+	if options.transport != "http" && options.transport != "stdio" {
+		return commandOptions{}, fmt.Errorf(
+			"unsupported transport %q: use http or stdio",
+			options.transport,
+		)
+	}
+	if options.listenAddress == "" {
+		return commandOptions{}, errors.New("listen address cannot be empty")
+	}
+	if !strings.HasPrefix(options.mcpPath, "/") || strings.ContainsAny(options.mcpPath, "?#") {
+		return commandOptions{}, fmt.Errorf(
+			"invalid HTTP path %q: use an absolute path without a query or fragment",
+			options.mcpPath,
+		)
+	}
+	if options.mcpPath == "/healthz" {
+		return commandOptions{}, errors.New("HTTP path /healthz is reserved for health checks")
+	}
+
+	return options, nil
+}
+
+// serveHTTP serves MCP over Streamable HTTP until the context is canceled.
+//
+// Args:
+//   - ctx: Context used to stop the HTTP server.
+//   - server: Configured MCP server.
+//   - listenAddress: TCP address on which the server listens.
+//   - mcpPath: URL path that accepts Streamable HTTP requests.
+//
+// Returns:
+//   - error: Listener, server, or graceful shutdown error.
+func serveHTTP(
+	ctx context.Context,
+	server *mcp.Server,
+	listenAddress string,
+	mcpPath string,
+) error {
+	listener, err := net.Listen("tcp", listenAddress)
+	if err != nil {
+		return fmt.Errorf("listen on %s: %w", listenAddress, err)
+	}
+
+	httpServer := &http.Server{
+		Addr:              listenAddress,
+		Handler:           newHTTPHandler(server, mcpPath),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- httpServer.Serve(listener)
+	}()
+
+	log.Printf("serving MCP Streamable HTTP on http://%s%s", listener.Addr(), mcpPath)
+	select {
+	case err := <-serverErrors:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return fmt.Errorf("serve MCP Streamable HTTP: %w", err)
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("shut down MCP Streamable HTTP server: %w", err)
+		}
+		return nil
+	}
+}
+
+// newHTTPHandler returns the Streamable HTTP and health-check routes.
+//
+// Args:
+//   - server: Configured MCP server.
+//   - mcpPath: URL path that accepts Streamable HTTP requests.
+//
+// Returns:
+//   - http.Handler: Handler for the MCP and health-check endpoints.
+func newHTTPHandler(server *mcp.Server, mcpPath string) http.Handler {
+	streamableHandler := mcp.NewStreamableHTTPHandler(
+		func(*http.Request) *mcp.Server { return server },
+		&mcp.StreamableHTTPOptions{
+			Stateless:                    true,
+			PropagateRequestCancellation: true,
+		},
+	)
+	mux := http.NewServeMux()
+	mux.Handle(mcpPath, streamableHandler)
+	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		response.WriteHeader(http.StatusOK)
+		_, _ = response.Write([]byte("ok\n"))
+	})
+	return mux
 }
 
 // newServer registers the typed, read-only retrieval tool.

@@ -2,7 +2,7 @@
 
 Read-only MCP server for retrieving CellMinerCDB rows from BigQuery without LLM calls or generated code.
 
-Version: `0.0.1`
+Version: `0.0.2`
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ make current
 ./dist/cdbai_data_go_mcp
 ```
 
-The command automatically reads `.env` from its working directory. Exported environment variables take precedence. The server uses MCP over stdin/stdout, so it normally runs as a child process of an MCP client rather than directly in a terminal.
+The command automatically reads `.env` from its working directory. Exported environment variables take precedence. By default, it serves MCP over Streamable HTTP at `http://127.0.0.1:8080/mcp`; `http://127.0.0.1:8080/healthz` is available for health checks.
 
 Use a different dotenv path with:
 
@@ -41,18 +41,50 @@ Run tests and build every supported release target:
 make
 ```
 
-Tagged versions matching `vVERSION` publish Linux AMD64 and macOS ARM64 binaries through [GitHub Releases](https://github.com/cannin/cdbai_data_go_mcp/releases).
+Tagged versions matching `vVERSION` publish Linux, macOS, and Windows binaries for AMD64 and ARM64 through [GitHub Releases](https://github.com/cannin/cdbai_data_go_mcp/releases).
 
 ## Basic Usage
 
-Configure an MCP client to launch the binary. The generic configuration shape is:
+Run the binary on the same host as Caddy:
+
+```sh
+./dist/cdbai_data_go_mcp --listen 127.0.0.1:8080
+```
+
+Proxy the public MCP endpoint directly to the binary; Supergateway is not needed. Override the upstream `Host` header so the MCP SDK's localhost DNS-rebinding protection accepts requests forwarded by Caddy:
+
+```caddyfile
+mcp.example.com {
+    reverse_proxy /mcp 127.0.0.1:8080 {
+        header_up Host 127.0.0.1:8080
+    }
+}
+```
+
+Then configure Codex with the HTTPS URL:
+
+```sh
+codex mcp add cdbai-data --url https://mcp.example.com/mcp
+```
+
+The equivalent `config.toml` entry is:
+
+```toml
+[mcp_servers.cdbai-data]
+url = "https://mcp.example.com/mcp"
+```
+
+For local clients that still launch subprocesses, stdio remains available:
 
 ```json
 {
   "mcpServers": {
     "cdbai-data": {
       "command": "/absolute/path/to/cdbai_data_go_mcp/dist/cdbai_data_go_mcp",
-      "args": ["--env", "/absolute/path/to/cdbai_data_go_mcp/.env"]
+      "args": [
+        "--transport", "stdio",
+        "--env", "/absolute/path/to/cdbai_data_go_mcp/.env"
+      ]
     }
   }
 }
@@ -63,6 +95,15 @@ The server exposes one tool:
 - `retrieve_data`: Retrieves long-format rows with optional lists of `data_types`, `datasets`, `obs_names`, `var_names`, and `tissues`, plus a bounded `limit`.
 
 Filters are case-insensitive exact matches. Different filter fields are combined with `AND`; values within one field are combined with `OR` semantics.
+
+### Command-line options
+
+| Option | Default | Purpose |
+|---|---|---|
+| `-t, --transport` | `http` | MCP transport: `http` or `stdio` |
+| `-l, --listen` | `127.0.0.1:8080` | Streamable HTTP listen address |
+| `--http-path` | `/mcp` | Streamable HTTP endpoint path |
+| `-e, --env` | `.env` | dotenv configuration file |
 
 ## Configuration
 
