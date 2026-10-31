@@ -41,7 +41,7 @@ Run tests and build every supported release target:
 make
 ```
 
-Tagged versions matching `vVERSION` publish Linux, macOS, and Windows binaries for AMD64 and ARM64 through [GitHub Releases](https://github.com/cannin/cdbai_data_go_mcp/releases).
+Tagged versions matching `vVERSION` publish Linux AMD64 and macOS ARM64 binaries through [GitHub Releases](https://github.com/cannin/cdbai_data_go_mcp/releases).
 
 ## Basic Usage
 
