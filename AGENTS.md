@@ -33,6 +33,7 @@
 ## Repository Pitfalls
 
 - Release only Linux AMD64 and macOS ARM64 binaries.
+- Production uses `--http-path /cdbai_data/mcp` behind `cdbai.sciluna.com`.
 - Streamable HTTP is the default transport at `127.0.0.1:8080/mcp`; stdio remains available with `--transport stdio`.
 - MCP stdio breaks if application logs are written to stdout.
 - A SQL `LIMIT` does not replace `MaxBytesBilled`; preserve both.

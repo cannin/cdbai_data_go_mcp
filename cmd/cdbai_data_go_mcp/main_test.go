@@ -32,7 +32,7 @@ func TestParseArgs(t *testing.T) {
 	options, err := parseArgs([]string{
 		"--env", "/tmp/cdbai.env",
 		"--listen", "localhost:9000",
-		"--http-path", "/data/mcp",
+		"--http-path", "/cdbai_data/mcp",
 	})
 	if err != nil {
 		t.Fatalf("parseArgs() error = %v", err)
@@ -46,7 +46,7 @@ func TestParseArgs(t *testing.T) {
 	if options.listenAddress != "localhost:9000" {
 		t.Fatalf("parseArgs() listenAddress = %q", options.listenAddress)
 	}
-	if options.mcpPath != "/data/mcp" {
+	if options.mcpPath != "/cdbai_data/mcp" {
 		t.Fatalf("parseArgs() mcpPath = %q", options.mcpPath)
 	}
 }
@@ -113,7 +113,7 @@ func TestStreamableHTTPToolDiscoveryAndCall(t *testing.T) {
 	ctx := context.Background()
 	service := data.NewService(protocolTestExecutor{}, "project.dataset.table", 1_000)
 	server := newServer(service, time.Second)
-	httpServer := httptest.NewServer(newHTTPHandler(server, "/mcp"))
+	httpServer := httptest.NewServer(newHTTPHandler(server, "/cdbai_data/mcp"))
 	defer httpServer.Close()
 
 	client := mcp.NewClient(
@@ -121,7 +121,7 @@ func TestStreamableHTTPToolDiscoveryAndCall(t *testing.T) {
 		nil,
 	)
 	clientSession, err := client.Connect(ctx, &mcp.StreamableClientTransport{
-		Endpoint: httpServer.URL + "/mcp",
+		Endpoint: httpServer.URL + "/cdbai_data/mcp",
 	}, nil)
 	if err != nil {
 		t.Fatalf("connect over Streamable HTTP: %v", err)

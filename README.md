@@ -45,17 +45,19 @@ Tagged versions matching `vVERSION` publish Linux AMD64 and macOS ARM64 binaries
 
 ## Basic Usage
 
-Run the binary on the same host as Caddy:
+Run the binary on the same host as Caddy and select the production MCP path:
 
 ```sh
-./dist/cdbai_data_go_mcp --listen 127.0.0.1:8080
+./dist/cdbai_data_go_mcp \
+    --listen 127.0.0.1:8080 \
+    --http-path /cdbai_data/mcp
 ```
 
 Proxy the public MCP endpoint directly to the binary; Supergateway is not needed. Override the upstream `Host` header so the MCP SDK's localhost DNS-rebinding protection accepts requests forwarded by Caddy:
 
 ```caddyfile
-mcp.example.com {
-    reverse_proxy /mcp 127.0.0.1:8080 {
+cdbai.sciluna.com {
+    reverse_proxy /cdbai_data/mcp 127.0.0.1:8080 {
         header_up Host 127.0.0.1:8080
     }
 }
@@ -64,14 +66,14 @@ mcp.example.com {
 Then configure Codex with the HTTPS URL:
 
 ```sh
-codex mcp add cdbai-data --url https://mcp.example.com/mcp
+codex mcp add cdbai-data --url https://cdbai.sciluna.com/cdbai_data/mcp
 ```
 
 The equivalent `config.toml` entry is:
 
 ```toml
 [mcp_servers.cdbai-data]
-url = "https://mcp.example.com/mcp"
+url = "https://cdbai.sciluna.com/cdbai_data/mcp"
 ```
 
 For local clients that still launch subprocesses, stdio remains available:
