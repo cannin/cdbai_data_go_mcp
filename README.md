@@ -98,6 +98,8 @@ The server exposes one tool:
 
 Filters are case-insensitive exact matches. Different filter fields are combined with `AND`; values within one field are combined with `OR` semantics.
 
+The MCP discovery metadata tells clients that `retrieve_data` is not synonym-aware and that aliases must be converted before the call. Cell lines require canonical Cellosaurus accessions, human genes require approved HGNC symbols, and compounds require numeric PubChem CIDs where applicable. For example, `MCF7` or `MCF-7` becomes `CVCL_0031`, `p53` becomes `TP53`, and `HER2` becomes `ERBB2`. Ambiguous identifiers must not be guessed. A zero-row response is inconclusive because it can mean either an invalid identifier or no matching observations.
+
 ### Command-line options
 
 | Option | Default | Purpose |

@@ -154,3 +154,35 @@ Expected arguments:
   "limit": 200
 }
 ```
+
+## 11. Cell-line and gene synonym normalization
+
+> Retrieve up to 10 CCLE gene-expression rows for p53 in the MCF-7 cell line.
+
+Expected arguments:
+
+```json
+{
+  "data_types": ["exp"],
+  "datasets": ["ccle"],
+  "obs_names": ["CVCL_0031"],
+  "var_names": ["TP53"],
+  "limit": 10
+}
+```
+
+## 12. Alternate gene synonym normalization
+
+> Retrieve up to 10 CCLE gene-expression rows for HER2 in the MCF7 cell line.
+
+Expected arguments:
+
+```json
+{
+  "data_types": ["exp"],
+  "datasets": ["ccle"],
+  "obs_names": ["CVCL_0031"],
+  "var_names": ["ERBB2"],
+  "limit": 10
+}
+```

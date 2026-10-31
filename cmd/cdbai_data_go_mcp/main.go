@@ -27,6 +27,8 @@ const (
 	defaultListenAddress    = "127.0.0.1:8080"
 	defaultMCPPath          = "/mcp"
 	gracefulShutdownTimeout = 5 * time.Second
+	serverInstructions      = `This server retrieves cancer pharmacogenomics data using exact-match biological identifiers. Resolve aliases to canonical identifiers before retrieval: use Cellosaurus accessions for cell lines, approved HGNC symbols for human genes, and numeric PubChem CIDs for compounds where applicable. For example, MCF7 or MCF-7 maps to CVCL_0031, p53 maps to TP53, and HER2 maps to ERBB2. Never invent an identifier; ask for clarification when a name is ambiguous. Treat a zero-row result as inconclusive because it may mean that an identifier is invalid or that no observations match the filters. Always inspect count, limit, and truncated before interpreting a response.`
+	retrieveDataDescription = `Retrieve rows from the configured CellMinerCDB BigQuery table using optional exact-match filters combined with AND. IMPORTANT: this tool is not synonym-aware. Before calling it, resolve cell-line names to Cellosaurus accessions, human gene aliases to approved HGNC symbols, and compound names to numeric PubChem CIDs where applicable. Examples: MCF7 or MCF-7 -> CVCL_0031; p53 -> TP53; HER2 -> ERBB2. Never invent an identifier; ask for clarification when a name is ambiguous. Zero rows do not prove biological absence: they may indicate an invalid identifier or no observations for the selected filters. Inspect count, limit, and truncated before interpreting results. Known data_type values include act, cop, mut, met, mth, bmt, rrb, exp, xai, pro, mir, mda, swa, xsq, cri, mtb, his, hs4, and sur. This tool is read-only, row-limited, and never accepts SQL.`
 )
 
 type commandOptions struct {
@@ -215,20 +217,16 @@ func newHTTPHandler(server *mcp.Server, mcpPath string) http.Handler {
 func newServer(service *data.Service, queryTimeout time.Duration) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "cdbai-data", Version: version},
-		nil,
+		&mcp.ServerOptions{Instructions: serverInstructions},
 	)
 	closedWorld := false
 	destructive := false
 	mcp.AddTool(
 		server,
 		&mcp.Tool{
-			Name:  "retrieve_data",
-			Title: "Retrieve CellMinerCDB data",
-			Description: "Retrieve rows from the configured CellMinerCDB BigQuery table. " +
-				"Filters are optional exact-match lists and are combined with AND. " +
-				"Known data_type values include act, cop, mut, met, mth, bmt, rrb, exp, " +
-				"xai, pro, mir, mda, swa, xsq, cri, mtb, his, hs4, and sur. " +
-				"The tool is read-only and never accepts SQL.",
+			Name:        "retrieve_data",
+			Title:       "Retrieve CellMinerCDB data",
+			Description: retrieveDataDescription,
 			Annotations: &mcp.ToolAnnotations{
 				DestructiveHint: &destructive,
 				IdempotentHint:  true,

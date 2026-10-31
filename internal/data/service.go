@@ -16,12 +16,12 @@ const (
 
 // RetrieveInput contains optional exact-match filters for a data query.
 type RetrieveInput struct {
-	DataTypes []string `json:"data_types,omitempty" jsonschema:"CellMinerCDB modality codes such as act, exp, xsq, mut, cop, or pro"`
-	Datasets  []string `json:"datasets,omitempty" jsonschema:"Dataset codes such as ccle, ctrp, gdsc1, nci60, or prism"`
-	ObsNames  []string `json:"obs_names,omitempty" jsonschema:"Cellosaurus cell-line identifiers beginning with CVCL_"`
-	VarNames  []string `json:"var_names,omitempty" jsonschema:"HGNC gene symbols, protein identifiers, microRNA identifiers, or numeric PubChem IDs"`
-	Tissues   []string `json:"tissues,omitempty" jsonschema:"Tissue names such as Blood, Breast, Lung, or Skin"`
-	Limit     int      `json:"limit,omitempty" jsonschema:"Maximum rows to return; defaults to 100 and is capped by the server"`
+	DataTypes []string `json:"data_types,omitempty" jsonschema:"Exact CellMinerCDB modality codes, such as act, exp, xsq, mut, cop, or pro"`
+	Datasets  []string `json:"datasets,omitempty" jsonschema:"Exact dataset codes, such as ccle, ctrp, gdsc1, nci60, or prism"`
+	ObsNames  []string `json:"obs_names,omitempty" jsonschema:"Canonical Cellosaurus accessions only. Resolve cell-line synonyms before calling; for example, MCF7 or MCF-7 maps to CVCL_0031"`
+	VarNames  []string `json:"var_names,omitempty" jsonschema:"Canonical identifiers only: approved HGNC symbols for human genes, dataset canonical protein or microRNA identifiers, or numeric PubChem CIDs for compounds. Resolve synonyms first; for example, p53 maps to TP53 and HER2 maps to ERBB2"`
+	Tissues   []string `json:"tissues,omitempty" jsonschema:"Exact tissue labels supported by the data, such as Blood, Breast, Lung, or Skin"`
+	Limit     int      `json:"limit,omitempty" jsonschema:"Maximum rows to return; defaults to 100 and is capped by the server. Check truncated to determine whether the response is incomplete"`
 }
 
 // Row is one CellMinerCDB long-format data record.

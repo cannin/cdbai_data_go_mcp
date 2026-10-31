@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -88,6 +89,48 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 	}
 	if !tools.Tools[0].Annotations.ReadOnlyHint {
 		t.Fatal("retrieve_data is not marked read-only")
+	}
+	initializeResult := clientSession.InitializeResult()
+	if initializeResult == nil {
+		t.Fatal("InitializeResult() is nil")
+	}
+	for _, expected := range []string{
+		"Resolve aliases to canonical identifiers",
+		"MCF7 or MCF-7 maps to CVCL_0031",
+		"p53 maps to TP53",
+		"zero-row result as inconclusive",
+	} {
+		if !strings.Contains(initializeResult.Instructions, expected) {
+			t.Errorf("server instructions do not contain %q: %q", expected, initializeResult.Instructions)
+		}
+	}
+
+	tool := tools.Tools[0]
+	for _, expected := range []string{
+		"this tool is not synonym-aware",
+		"MCF7 or MCF-7 -> CVCL_0031",
+		"p53 -> TP53",
+		"Zero rows do not prove biological absence",
+	} {
+		if !strings.Contains(tool.Description, expected) {
+			t.Errorf("tool description does not contain %q: %q", expected, tool.Description)
+		}
+	}
+
+	schemaJSON, err := json.Marshal(tool.InputSchema)
+	if err != nil {
+		t.Fatalf("json.Marshal(InputSchema) error = %v", err)
+	}
+	schemaText := string(schemaJSON)
+	for _, expected := range []string{
+		"Canonical Cellosaurus accessions only",
+		"MCF7 or MCF-7 maps to CVCL_0031",
+		"p53 maps to TP53 and HER2 maps to ERBB2",
+		"Check truncated to determine whether the response is incomplete",
+	} {
+		if !strings.Contains(schemaText, expected) {
+			t.Errorf("input schema does not contain %q: %s", expected, schemaText)
+		}
 	}
 
 	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
