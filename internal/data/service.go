@@ -16,11 +16,11 @@ const (
 
 // RetrieveInput contains optional exact-match filters for a data query.
 type RetrieveInput struct {
-	DataTypes []string `json:"data_types,omitempty" jsonschema:"Exact CellMinerCDB modality codes, such as act, exp, xsq, mut, cop, or pro"`
-	Datasets  []string `json:"datasets,omitempty" jsonschema:"Exact dataset codes, such as ccle, ctrp, gdsc1, nci60, or prism"`
-	ObsNames  []string `json:"obs_names,omitempty" jsonschema:"Canonical Cellosaurus accessions only. Resolve cell-line synonyms before calling; for example, MCF7 or MCF-7 maps to CVCL_0031"`
-	VarNames  []string `json:"var_names,omitempty" jsonschema:"Canonical identifiers only: approved HGNC symbols for human genes, dataset canonical protein or microRNA identifiers, or numeric PubChem CIDs for compounds. Resolve synonyms first; for example, p53 maps to TP53 and HER2 maps to ERBB2"`
-	Tissues   []string `json:"tissues,omitempty" jsonschema:"Exact tissue labels supported by the data, such as Blood, Breast, Lung, or Skin"`
+	DataTypes []string `json:"data_types,omitempty" jsonschema:"Case-sensitive canonical lowercase modality codes: act, cop, mut, met, mth, bmt, rrb, exp, xai, pro, mir, mda, swa, xsq, cri, mtb, his, hs4, or sur"`
+	Datasets  []string `json:"datasets,omitempty" jsonschema:"Case-sensitive canonical dataset codes: acc, achilles, almanac, ccle, ctrp, gdsc1, gdsc2, gdscDec15, mdaMills, nci60, nci60Hts384, nciSarcoma, nciSclc, prism, tncats, or uniSarcoma"`
+	ObsNames  []string `json:"obs_names,omitempty" jsonschema:"Case-sensitive canonical Cellosaurus accessions beginning with uppercase CVCL_. Resolve synonyms first; for example, MCF7 or MCF-7 maps to CVCL_0031"`
+	VarNames  []string `json:"var_names,omitempty" jsonschema:"Case-sensitive canonical identifiers: approved uppercase HGNC symbols for human genes, canonical protein or microRNA identifiers for their modality, or numeric PubChem CIDs for compounds. Resolve synonyms first; for example, p53 maps to TP53 and HER2 maps to ERBB2"`
+	Tissues   []string `json:"tissues,omitempty" jsonschema:"Case-sensitive canonical tissue labels: Adrenal_Gland, Biliary_Tract, Bladder_Urinary_Tract, Blood, Bone, Bowel, Brain_CNS, Breast, Cervix, Esophagus_Stomach, Eye, Head_Neck, Kidney, Liver, Lung, Lymph, Mesothelium, Other, Ovary, Pancreas, Peripheral_Nervous_System, Prostate, Skin, Soft_Tissue, Thyroid, Uterus, or Vulva"`
 	Limit     int      `json:"limit,omitempty" jsonschema:"Maximum rows to return; defaults to 100 and is capped by the server. Check truncated to determine whether the response is incomplete"`
 }
 
@@ -156,15 +156,15 @@ func BuildQuery(tableFQN string, input RetrieveInput, scanLimit int) QuerySpec {
 	parameters := make([]bigquery.QueryParameter, 0, 6)
 
 	addFilter := func(column string, parameter string, values []string) {
-		normalized := normalizeValues(values)
-		if len(normalized) == 0 {
+		cleaned := cleanValues(values)
+		if len(cleaned) == 0 {
 			return
 		}
 		clauses = append(
 			clauses,
-			fmt.Sprintf("LOWER(%s) IN UNNEST(@%s)", column, parameter),
+			fmt.Sprintf("%s IN UNNEST(@%s)", column, parameter),
 		)
-		parameters = append(parameters, bigquery.QueryParameter{Name: parameter, Value: normalized})
+		parameters = append(parameters, bigquery.QueryParameter{Name: parameter, Value: cleaned})
 	}
 
 	addFilter("data_type", "data_types", input.DataTypes)
@@ -185,11 +185,11 @@ func BuildQuery(tableFQN string, input RetrieveInput, scanLimit int) QuerySpec {
 	return QuerySpec{SQL: sql, Parameters: parameters}
 }
 
-func normalizeValues(values []string) []string {
+func cleanValues(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
-	normalized := make([]string, 0, len(values))
+	cleaned := make([]string, 0, len(values))
 	for _, value := range values {
-		value = strings.ToLower(strings.TrimSpace(value))
+		value = strings.TrimSpace(value)
 		if value == "" {
 			continue
 		}
@@ -197,7 +197,7 @@ func normalizeValues(values []string) []string {
 			continue
 		}
 		seen[value] = struct{}{}
-		normalized = append(normalized, value)
+		cleaned = append(cleaned, value)
 	}
-	return normalized
+	return cleaned
 }

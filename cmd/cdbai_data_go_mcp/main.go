@@ -31,6 +31,8 @@ const (
 
 CellMinerCDB data is stored in long format. Each row contains data_type, dataset, obs_name, var_name, value, and tissue. The value is the numeric measurement for one obs_name and var_name pair.
 
+All filters are case-sensitive exact matches. The server trims surrounding whitespace but does not apply LOWER(), uppercase values, resolve aliases, or otherwise change identifier case. Supply every value in its stored canonical form: data_type uses the lowercase codes below; dataset uses the exact spelling below, including internal capitals; obs_name uses an uppercase CVCL_ accession; HGNC var_name values use the approved uppercase gene symbol; PubChem var_name values contain digits only; other var_name modalities use their canonical database spelling; and tissue uses the exact spelling below.
+
 Interpret data_type as follows:
 - act: drug activity; var_name is a PubChem ID
 - cop: DNA copy number; var_name is an HGNC gene symbol
@@ -55,24 +57,27 @@ Interpret data_type as follows:
 Interpret dataset as follows:
 - acc: adrenocortical carcinoma
 - achilles: Achilles CRISPR
+- almanac: NCI ALMANAC dataset
 - ccle: Broad Cancer Cell Line Encyclopedia
 - ctrp: Broad Cancer Therapeutics Response Portal using CellTitreGlo
 - gdsc1: drug response using resazurin or Syto60
 - gdsc2: drug response using CellTitreGlo
+- gdscDec15: GDSC December 2015 dataset
 - mdaMills: MD Anderson proteomics
 - nci60: NCI DTP drug response using sulforhodamine B and multigenomics
 - nci60Hts384: NCI DTP drug response using CellTitreGlo
+- nciSarcoma: NCI sarcoma dataset
 - nciSclc: NCI small cell lung cancer drug response and multigenomics
 - prism: Broad PRISM drug response using CellTitreGlo
 - tncats: NIH NCATS drug response using CellTitreGlo
 - uniSarcoma: unified sarcoma
 
-obs_name is a Cellosaurus cell-line identifier and always starts with CVCL_. var_name depends on data_type: HGNC gene symbols and related biological identifiers are alphanumeric, while PubChem IDs are numeric only.
+obs_name is a case-sensitive Cellosaurus cell-line identifier and always starts with uppercase CVCL_. var_name depends on data_type: approved HGNC symbols use their canonical uppercase form, PubChem IDs are numeric only, and other identifiers retain the canonical case defined by their source database.
 
-tissue is one of: Adrenal_Gland, Biliary_Tract, Bladder_Urinary_Tract, Blood, Bone, Bowel, Brain_CNS, Breast, Cervix, Esophagus_Stomach, Eye, Head_Neck, Kidney, Liver, Lung, Lymph, Mesothelium, Other, Ovary, Pancreas, Peripheral_Nervous_System, Prostate, Skin, Soft_Tissue, Thyroid, or Uterus.
+tissue is one of: Adrenal_Gland, Biliary_Tract, Bladder_Urinary_Tract, Blood, Bone, Bowel, Brain_CNS, Breast, Cervix, Esophagus_Stomach, Eye, Head_Neck, Kidney, Liver, Lung, Lymph, Mesothelium, Other, Ovary, Pancreas, Peripheral_Nervous_System, Prostate, Skin, Soft_Tissue, Thyroid, Uterus, or Vulva.
 
 For example, data_type cop, dataset ctrp, obs_name CVCL_0002, var_name DDX25, value 0.042600, and tissue Blood represents a DNA copy-number measurement for DDX25 in that blood-derived cell line.`
-	retrieveDataDescription = `Retrieve long-format CellMinerCDB rows from the configured BigQuery table. Each row contains data_type, dataset, obs_name, var_name, value, and tissue; use data_type to interpret var_name and value according to the server instructions. Optional exact-match filters are case-insensitive. Values within one filter use OR semantics, while different filters are combined with AND. IMPORTANT: this tool is not synonym-aware. Before calling it, resolve cell-line names to Cellosaurus accessions, human gene aliases to approved HGNC symbols, and compound names to numeric PubChem CIDs where applicable. Examples: MCF7 or MCF-7 -> CVCL_0031; p53 -> TP53; HER2 -> ERBB2. Never invent an identifier; ask for clarification when a name is ambiguous. Zero rows do not prove biological absence: they may indicate an invalid identifier or no observations for the selected filters. Inspect count, limit, and truncated before interpreting results. Known data_type values include act, cop, mut, met, mth, bmt, rrb, exp, xai, pro, mir, mda, swa, xsq, cri, mtb, his, hs4, and sur. This tool is read-only, row-limited, and never accepts SQL.`
+	retrieveDataDescription = `Retrieve long-format CellMinerCDB rows from the configured BigQuery table. Each row contains data_type, dataset, obs_name, var_name, value, and tissue; use data_type to interpret var_name and value according to the server instructions. Optional filters are case-sensitive exact matches. The server trims surrounding whitespace but does not apply LOWER(), change identifier case, or resolve aliases. Values within one filter use OR semantics, while different filters are combined with AND. IMPORTANT: before calling the tool, resolve cell-line names to uppercase Cellosaurus accessions, human gene aliases to approved uppercase HGNC symbols, and compound names to numeric PubChem CIDs where applicable. Use dataset and tissue values exactly as listed in the server instructions, including internal capitals and underscores. Examples: MCF7 or MCF-7 -> CVCL_0031; p53 -> TP53; HER2 -> ERBB2. Never invent an identifier; ask for clarification when a name is ambiguous. Zero rows do not prove biological absence: they may indicate an invalid identifier, incorrectly cased input, or no observations for the selected filters. Inspect count, limit, and truncated before interpreting results. Known data_type values include act, cop, mut, met, mth, bmt, rrb, exp, xai, pro, mir, mda, swa, xsq, cri, mtb, his, hs4, and sur. This tool is read-only, row-limited, and never accepts SQL.`
 )
 
 type commandOptions struct {

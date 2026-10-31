@@ -1,6 +1,9 @@
 # Build output.
 /dist/
 
+# Local benchmark code and generated artifacts.
+/benchmarks/
+
 # Go defaults from https://github.com/github/gitignore/blob/main/Go.gitignore.
 # Binaries for programs and plugins.
 *.exe
@@ -62,3 +65,7 @@ secrets/
 /.vscode/
 .DS_Store
 *.log
+
+# Python benchmark caches.
+__pycache__/
+*.py[cod]

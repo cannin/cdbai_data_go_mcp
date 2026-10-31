@@ -99,6 +99,15 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 		"MCF7 or MCF-7 maps to CVCL_0031",
 		"p53 maps to TP53",
 		"zero-row result as inconclusive",
+		"does not apply LOWER()",
+		"mdaMills: MD Anderson proteomics",
+		"nci60Hts384: NCI DTP drug response",
+		"almanac: NCI ALMANAC dataset",
+		"gdscDec15: GDSC December 2015 dataset",
+		"nciSarcoma: NCI sarcoma dataset",
+		"Adrenal_Gland",
+		"Soft_Tissue",
+		"Vulva",
 	} {
 		if !strings.Contains(initializeResult.Instructions, expected) {
 			t.Errorf("server instructions do not contain %q: %q", expected, initializeResult.Instructions)
@@ -107,7 +116,8 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 
 	tool := tools.Tools[0]
 	for _, expected := range []string{
-		"this tool is not synonym-aware",
+		"case-sensitive exact matches",
+		"does not apply LOWER()",
 		"MCF7 or MCF-7 -> CVCL_0031",
 		"p53 -> TP53",
 		"Zero rows do not prove biological absence",
@@ -123,9 +133,12 @@ func TestMCPToolDiscoveryAndCall(t *testing.T) {
 	}
 	schemaText := string(schemaJSON)
 	for _, expected := range []string{
-		"Canonical Cellosaurus accessions only",
+		"Case-sensitive canonical Cellosaurus accessions",
 		"MCF7 or MCF-7 maps to CVCL_0031",
 		"p53 maps to TP53 and HER2 maps to ERBB2",
+		"gdscDec15, mdaMills, nci60, nci60Hts384, nciSarcoma, nciSclc",
+		"Adrenal_Gland, Biliary_Tract",
+		"Uterus, or Vulva",
 		"Check truncated to determine whether the response is incomplete",
 	} {
 		if !strings.Contains(schemaText, expected) {
