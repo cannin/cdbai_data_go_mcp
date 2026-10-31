@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	version                 = "0.0.2"
+	version                 = "0.1.0"
 	defaultListenAddress    = "127.0.0.1:8080"
 	defaultMCPPath          = "/mcp"
 	gracefulShutdownTimeout = 5 * time.Second
